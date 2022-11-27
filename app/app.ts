@@ -81,19 +81,31 @@ export default function App() {
     ${dyn(global.Provider, { value: null })`
       <main>
         <section>
-          <p class="headline">Wordle</p>
+          <div class="headline">
+            <img src="assets/images/favicon.png">
+            <p>Wordle</p>
+          </div>
           <p class="word">${state ? state.message : ''}</p>
           <div class="grid">
             ${Array(ROWS).fill(0).map((_, row) => {
-              const guess = guesses[row];
+              const guess: Guess = guesses[row];
               return html`
                 <div class="row">
                   ${Array(COLS).fill(0).map((_, col) => {
                     const letter = guess?.letters[col];
                     return letter ? html`
-                      <div class="letter col-${col} ${letter.indicator}">${letter.char}</div>
+                      <div class="letter ${isEvaluated(letter) ? 'entered' : ''}">
+                        <div class="flip col-${col}">
+                          <div class="front">${letter.char}</div>
+                          <div class="back ${letter.indicator}">${letter.char}</div>
+                        </div>
+                      </div>
                     ` : html`
-                      <div class="letter col-${col} unknown"></div>
+                      <div class="letter col-${col} unknown">
+                        <div class="flip">
+                          <div class="front"></div>
+                        </div>
+                      </div>
                     `;
                   })}
                 </div>
@@ -148,4 +160,8 @@ function isValidWord(words: string[], guess: Guess): boolean {
     .map((letter) => letter.char)
     .join('');
   return words.includes(word);
+}
+
+function isEvaluated(letter: Letter): boolean {
+  return letter.indicator !== Indicator.UNKNOWN;
 }
