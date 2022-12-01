@@ -1,6 +1,6 @@
 import { html, dyn, createContext, useState, useEffect } from './deps.ts';
-import { Guess, Indicator, Letter, GameState, UseState, UseStateRef } from "./types.ts";
-import { useStateRef } from './hooks.ts';
+import { Guess, Indicator, Letter, GameState, UseState, UseStateRef, UseMultiRef } from "./types.ts";
+import { useMultiRef, useStateRef } from './hooks.ts';
 import WORDS from './words.ts';
 
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
@@ -13,6 +13,7 @@ export default function App() {
   const [state, setState]: UseState<GameState> = useState(null);
   const [, setWord, wordRef]: UseStateRef<string> = useStateRef(null);
   const [guesses, setGuesses, guessesRef]: UseStateRef<Guess[]> = useStateRef([]);
+  const [refs, ref]: UseMultiRef<HTMLElement> = useMultiRef();
   
   useEffect(() => {
     const word: string = generateWord();
@@ -40,7 +41,14 @@ export default function App() {
       if (key === 'Enter') {
         if (guess.letters.length === COLS) {
           if (!isValidWord(WORDS, guess)) {
-            console.log('not in list');
+            refs[index]?.animate([
+              { transform: 'translateX(0px)' },
+              { transform: 'translateX(5px)' },
+              { transform: 'translateX(-5px)' },
+              { transform: 'translateX(0px)' },
+            ], {
+              duration: 200
+            });
             return;
           }
           guesses[index] = evaluateGuess(wordRef.current, guess);
@@ -63,6 +71,17 @@ export default function App() {
         if (guess.letters.length > 0) {
           guess.letters.pop();
           setGuesses(guesses);
+          const row = refs[index];
+          if (row) {
+            const letter = Array.from(row.querySelectorAll('.letter'));
+            letter?.[guess.letters.length]?.animate([
+              { transform: 'scale(1)' },
+              { transform: 'scale(0.9)' },
+              { transform: 'scale(1)' },
+            ], {
+              duration: 150
+            });
+          }
         }
         return;
       }
@@ -73,6 +92,17 @@ export default function App() {
       if (guess.letters.length < COLS) {
         guess.letters.push({ char, indicator: Indicator.UNKNOWN });
         setGuesses(guesses);
+        const row = refs[index];
+        if (row) {
+          const letter = Array.from(row.querySelectorAll('.letter'));
+          letter?.[guess.letters.length - 1]?.animate([
+            { transform: 'scale(1)' },
+            { transform: 'scale(1.15)' },
+            { transform: 'scale(1)' },
+          ], {
+            duration: 150
+          });
+        }
       }
     }
   }
@@ -89,8 +119,9 @@ export default function App() {
           <div class="grid">
             ${Array(ROWS).fill(0).map((_, row) => {
               const guess: Guess = guesses[row];
+              const isCurrent = !state && row === guesses.length - 1;
               return html`
-                <div class="row">
+                <div ref="${ref}" class="row ${isCurrent ? 'current' : ''}">
                   ${Array(COLS).fill(0).map((_, col) => {
                     const letter = guess?.letters[col];
                     return letter ? html`

@@ -101,6 +101,10 @@ main {
       .row {
         display: flex;
         gap: 5px;
+
+        &.current .letter .flip .front {
+          border: 1.5px solid #5F5F5F;
+        }
       }
     }
     
@@ -151,6 +155,7 @@ main {
         .front {
           background-color: unset;
           border: 1.5px solid #444444;
+          transition: border-color 1s;
           color: white;
         }
       
@@ -204,14 +209,5 @@ main {
         }
       }
     }
-  }
-}
-
-@keyframes flip {
-  0% {
-    transform: rotate3d(1, 0, 0, 0deg);
-  }
-  100% {
-    transform: rotate3d(1, 0, 0, 180deg);
   }
 }
