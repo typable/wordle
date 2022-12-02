@@ -1,7 +1,7 @@
 #!/bin/bash
 
 target=wordle
-cd /srv/www/typable.dev/$target
+cd /srv/$target
 
 git --git-dir=../$target/.git --work-tree=../$target pull origin main
 
