@@ -136,7 +136,6 @@ export default function App() {
           <img src="assets/images/favicon.png">
           <p>Wordle</p>
         </div>
-        <p class="mode">${isDaily ? 'Daily' : 'Freeplay'} mode</p>
         <p class="word">${state ? state.message : ''}</p>
         <div class="grid">
           ${doCount(ROWS).map((index) => renderRow(index))}
