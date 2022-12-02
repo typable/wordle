@@ -8,7 +8,6 @@ export interface Ref<T> {
   current: T,
 }
 
-
 export enum Indicator {
   UNKNOWN = "unknown",
   NOT_INCLUDED = "not-included",

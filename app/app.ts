@@ -1,13 +1,29 @@
-import { html, dyn, createContext, useState, useEffect } from './deps.ts';
-import { Guess, Indicator, Letter, GameState, UseState, UseStateRef, UseMultiRef } from "./types.ts";
+import { html, useState, useEffect } from './deps.ts';
+import { Guess, Indicator, GameState, UseState, UseStateRef, UseMultiRef } from "./types.ts";
 import { useMultiRef, useStateRef } from './hooks.ts';
 import WORDS from './words.ts';
+import { createGuess, doCount, evaluateGuess, generateWord, isCorrectWord, isEvaluated, isValidWord } from "./utils.ts";
 
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
 const COLS = 5;
 const ROWS = 6;
 
-export const global = createContext({});
+const INSERT_ANIMATION = [
+  { transform: 'scale(1)' },
+  { transform: 'scale(1.15)' },
+  { transform: 'scale(1)' },
+];
+const REMOVE_ANIMATION = [
+  { transform: 'scale(1)' },
+  { transform: 'scale(0.9)' },
+  { transform: 'scale(1)' },
+];
+const INVALID_ANIMATION = [
+  { transform: 'translateX(0px)' },
+  { transform: 'translateX(5px)' },
+  { transform: 'translateX(-5px)' },
+  { transform: 'translateX(0px)' },
+];
 
 export default function App() {
   const [state, setState]: UseState<GameState> = useState(null);
@@ -41,14 +57,8 @@ export default function App() {
       if (key === 'Enter') {
         if (guess.letters.length === COLS) {
           if (!isValidWord(WORDS, guess)) {
-            refs[index]?.animate([
-              { transform: 'translateX(0px)' },
-              { transform: 'translateX(5px)' },
-              { transform: 'translateX(-5px)' },
-              { transform: 'translateX(0px)' },
-            ], {
-              duration: 200
-            });
+            const element = refs[index];
+            element?.animate(INVALID_ANIMATION, { duration: 200 });
             return;
           }
           guesses[index] = evaluateGuess(wordRef.current, guess);
@@ -74,13 +84,8 @@ export default function App() {
           const row = refs[index];
           if (row) {
             const letter = Array.from(row.querySelectorAll('.letter'));
-            letter?.[guess.letters.length]?.animate([
-              { transform: 'scale(1)' },
-              { transform: 'scale(0.9)' },
-              { transform: 'scale(1)' },
-            ], {
-              duration: 150
-            });
+            const element = letter?.[guess.letters.length];
+            element?.animate(REMOVE_ANIMATION, { duration: 150 });
           }
         }
         return;
@@ -94,105 +99,49 @@ export default function App() {
         setGuesses(guesses);
         const row = refs[index];
         if (row) {
-          const letter = Array.from(row.querySelectorAll('.letter'));
-          letter?.[guess.letters.length - 1]?.animate([
-            { transform: 'scale(1)' },
-            { transform: 'scale(1.15)' },
-            { transform: 'scale(1)' },
-          ], {
-            duration: 150
-          });
+          const elements = Array.from(row.querySelectorAll('.letter'));
+          const element = elements?.[guess.letters.length - 1];
+          element?.animate(INSERT_ANIMATION, { duration: 150 });
         }
       }
     }
   }
+
+  function renderRow(index: number) {
+    const guess: Guess = guesses[index];
+    const isCurrent = !state && index === guesses.length - 1;
+    return html`
+      <div ref="${ref}" class="row ${isCurrent ? 'current' : ''}">
+        ${doCount(COLS).map((index) => renderCell(guess, index))}
+      </div>
+    `;
+  }
+
+  function renderCell(guess: Guess, index: number) {
+    const letter = guess?.letters[index];
+    return html`
+      <div class="letter ${letter ? (isEvaluated(letter) ? 'entered' : '') : ''}">
+        <div class="flip col-${index}">
+          <div class="front">${letter?.char}</div>
+          <div class="back ${letter?.indicator}">${letter?.char}</div>
+        </div>
+      </div>
+    `;
+  }
   
   return html`
-    ${dyn(global.Provider, { value: null })`
-      <main>
-        <section>
-          <div class="headline">
-            <img src="assets/images/favicon.png">
-            <p>Wordle</p>
-          </div>
-          <p class="word">${state ? state.message : ''}</p>
-          <div class="grid">
-            ${Array(ROWS).fill(0).map((_, row) => {
-              const guess: Guess = guesses[row];
-              const isCurrent = !state && row === guesses.length - 1;
-              return html`
-                <div ref="${ref}" class="row ${isCurrent ? 'current' : ''}">
-                  ${Array(COLS).fill(0).map((_, col) => {
-                    const letter = guess?.letters[col];
-                    return letter ? html`
-                      <div class="letter ${isEvaluated(letter) ? 'entered' : ''}">
-                        <div class="flip col-${col}">
-                          <div class="front">${letter.char}</div>
-                          <div class="back ${letter.indicator}">${letter.char}</div>
-                        </div>
-                      </div>
-                    ` : html`
-                      <div class="letter col-${col} unknown">
-                        <div class="flip">
-                          <div class="front"></div>
-                        </div>
-                      </div>
-                    `;
-                  })}
-                </div>
-              `;
-            })}
-          </div>
-        </section>
-      </main>
-    `}
+    <main>
+      <section>
+        <div class="headline">
+          <img src="assets/images/favicon.png">
+          <p>Wordle</p>
+        </div>
+        <p class="mode">${isDaily ? 'Daily' : 'Freeplay'} mode</p>
+        <p class="word">${state ? state.message : ''}</p>
+        <div class="grid">
+          ${doCount(ROWS).map((index) => renderRow(index))}
+        </div>
+      </section>
+    </main>
   `;
-}
-
-function generateWord(): string {
-  const index = Math.floor(Math.random() * WORDS.length);
-  return WORDS[index];
-}
-
-function createLetters(word: string): Letter[] {
-  return word.split('')
-    .map((char) => ({ char, indicator: Indicator.UNKNOWN }));
-}
-
-function createGuess(word?: string): Guess {
-  const letters: Letter[] = createLetters(word ?? '');
-  return { letters };
-}
-
-function evaluateGuess(word: string, guess: Guess): Guess {
-  for (let i = 0; i < word.length; i++) {
-    const letter = guess.letters[i];
-    if (word[i] === letter.char) {
-      letter.indicator = Indicator.CORRECT;
-    }
-    else if (word.includes(letter.char)) {
-      letter.indicator = Indicator.IS_INCLUDED;
-    }
-    else {
-      letter.indicator = Indicator.NOT_INCLUDED;
-    }
-  }
-  return guess;
-}
-
-function isCorrectWord(word: string, guess: Guess): boolean {
-  return guess.letters.every((letter, i) => {
-    return word[i] === letter.char;
-  });
-}
-
-function isValidWord(words: string[], guess: Guess): boolean {
-  const word = guess.letters
-    .map((letter) => letter.char)
-    .join('');
-  return words.includes(word);
-}
-
-function isEvaluated(letter: Letter): boolean {
-  return letter.indicator !== Indicator.UNKNOWN;
 }
